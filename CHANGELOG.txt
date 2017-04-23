@@ -1,3 +1,7 @@
+Commerce Combine Carts 8.x-1.0-alpha1, 2017-04-23
+-------------------------------------------------
+No changes since initial dev release
+
 Commerce Combine Carts 8.x-1.x-dev, 2017-04-23
 ----------------------------------------------
 Initial dev release by bmcclure
