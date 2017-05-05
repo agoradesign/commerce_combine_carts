@@ -76,10 +76,10 @@ class CartUnifier {
   public function combineCarts(OrderInterface $main_cart, OrderInterface $other_cart, $delete = FALSE) {
     if ($main_cart->id() !== $other_cart->id()) {
       foreach ($other_cart->getItems() as $item) {
-        $main_cart->addItem($item);
         $other_cart->removeItem($item);
+        $item->get('order_id')->entity = $main_cart;
+        $main_cart->addItem($item);
       }
-
       $main_cart->save();
 
       if ($delete) {
