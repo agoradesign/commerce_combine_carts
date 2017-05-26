@@ -1,7 +1,7 @@
 services:
   commerce_combine_carts.cart_unifier:
     class: Drupal\commerce_combine_carts\CartUnifier
-    arguments: ['@commerce_cart.cart_provider']
+    arguments: ['@commerce_cart.cart_provider', '@commerce_cart.cart_manager']
 
   commerce_customizations.cart_event_subscriber:
     class: '\Drupal\commerce_combine_carts\EventSubscriber\CartEventSubscriber'
