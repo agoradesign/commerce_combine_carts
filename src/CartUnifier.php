@@ -52,6 +52,8 @@ class CartUnifier {
    *   The cart to assign.
    * @param \Drupal\user\UserInterface $user
    *   The user.
+   *
+   * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function assignCart(OrderInterface $cart, UserInterface $user) {
     $this->combineCarts($this->getMainCart($user), $cart, FALSE);
@@ -62,6 +64,8 @@ class CartUnifier {
    *
    * @param \Drupal\user\UserInterface $user
    *   The user.
+   *
+   * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function combineUserCarts(UserInterface $user) {
     $main_cart = $this->getMainCart($user);
@@ -80,6 +84,8 @@ class CartUnifier {
    *   The other cart.
    * @param bool $delete
    *   TRUE to delete the other cart when finished, FALSE to save it as empty.
+   *
+   * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function combineCarts(OrderInterface $main_cart, OrderInterface $other_cart, $delete = FALSE) {
     if ($main_cart->id() !== $other_cart->id()) {

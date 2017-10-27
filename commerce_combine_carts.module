@@ -20,6 +20,8 @@ function commerce_combine_carts_help($route_name, RouteMatchInterface $route_mat
 
 /**
  * Implements hook_user_login().
+ *
+ * @throws \Drupal\Core\Entity\EntityStorageException
  */
 function commerce_combine_carts_user_login(\Drupal\user\UserInterface $account) {
   /** @var \Drupal\commerce_combine_carts\CartUnifier $cart_unifier */
