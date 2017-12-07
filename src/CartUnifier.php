@@ -41,7 +41,7 @@ class CartUnifier {
    * @param \Drupal\user\UserInterface $user
    *   The user.
    *
-   * @return \Drupal\commerce_order\Entity\OrderInterface
+   * @return \Drupal\commerce_order\Entity\OrderInterface|null
    *   The main cart for the user, or NULL if there is no cart.
    */
   public function getMainCart(UserInterface $user) {
@@ -74,12 +74,14 @@ class CartUnifier {
   public function assignCart(OrderInterface $cart, UserInterface $user) {
     $main_cart = $this->getMainCart($user);
 
-    // Determine which cart additional cart should be merged into.
-    if ($this->isCartRequestedForCheckout($cart)) {
-      $this->combineCarts($cart, $main_cart, FALSE);
-    }
-    else {
-      $this->combineCarts($main_cart, $cart, FALSE);
+    if ($main_cart) {
+      // Determine which cart additional cart should be merged into.
+      if ($this->isCartRequestedForCheckout($cart)) {
+        $this->combineCarts($cart, $main_cart, FALSE);
+      }
+      else {
+        $this->combineCarts($main_cart, $cart, FALSE);
+      }
     }
   }
 
@@ -93,8 +95,10 @@ class CartUnifier {
    */
   public function combineUserCarts(UserInterface $user) {
     $main_cart = $this->getMainCart($user);
-    foreach ($this->cartProvider->getCarts($user) as $cart) {
-      $this->combineCarts($main_cart, $cart, TRUE);
+    if ($main_cart) {
+      foreach ($this->cartProvider->getCarts($user) as $cart) {
+        $this->combineCarts($main_cart, $cart, TRUE);
+      }
     }
   }
 
