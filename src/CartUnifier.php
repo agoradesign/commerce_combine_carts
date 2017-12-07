@@ -5,6 +5,7 @@ namespace Drupal\commerce_combine_carts;
 use Drupal\commerce_cart\CartManagerInterface;
 use Drupal\commerce_cart\CartProviderInterface;
 use Drupal\commerce_order\Entity\OrderInterface;
+use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\user\UserInterface;
 
 class CartUnifier {
@@ -15,6 +16,9 @@ class CartUnifier {
   /** @var \Drupal\commerce_cart\CartManagerInterface */
   protected $cartManager;
 
+  /** @var \Drupal\Core\Routing\RouteMatchInterface $routeMatch */
+  protected $routeMatch;
+
   /**
    * CartUnifier constructor.
    *
@@ -22,10 +26,13 @@ class CartUnifier {
    *   The cart provider.
    * @param \Drupal\commerce_cart\CartManagerInterface $cart_manager
    *   The cart manager.
+   * @param \Drupal\Core\Routing\RouteMatchInterface $route_match
+   *   The route match.
    */
-  public function __construct(CartProviderInterface $cart_provider, CartManagerInterface $cart_manager) {
+  public function __construct(CartProviderInterface $cart_provider, CartManagerInterface $cart_manager, RouteMatchInterface $route_match) {
     $this->cartProvider = $cart_provider;
     $this->cartManager = $cart_manager;
+    $this->routeMatch = $route_match;
   }
 
   /**
@@ -38,7 +45,16 @@ class CartUnifier {
    *   The main cart for the user, or NULL if there is no cart.
    */
   public function getMainCart(UserInterface $user) {
+    // Clear cart cache so that newly assigned carts are available.
+    $this->cartProvider->clearCaches();
     $carts = $this->cartProvider->getCarts($user);
+
+    // Give priority to cart which is being checked out.
+    if ($requested_cart = $this->getCartRequestedForCheckout()) {
+      if (isset($carts[$requested_cart->id()])) {
+        return $carts[$requested_cart->id()];
+      }
+    }
 
     return (!empty($carts))
       ? array_shift($carts)
@@ -56,7 +72,15 @@ class CartUnifier {
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function assignCart(OrderInterface $cart, UserInterface $user) {
-    $this->combineCarts($this->getMainCart($user), $cart, FALSE);
+    $main_cart = $this->getMainCart($user);
+
+    // Determine which cart additional cart should be merged into.
+    if ($this->isCartRequestedForCheckout($cart)) {
+      $this->combineCarts($cart, $main_cart, FALSE);
+    }
+    else {
+      $this->combineCarts($main_cart, $cart, FALSE);
+    }
   }
 
   /**
@@ -102,6 +126,38 @@ class CartUnifier {
         $other_cart->save();
       }
     }
+  }
+
+  /**
+   * Returns the cart requested for checkout.
+   *
+   * @return \Drupal\commerce_order\Entity\OrderInterface|null
+   */
+  protected function getCartRequestedForCheckout() {
+    if ($this->routeMatch->getRouteName() == 'commerce_checkout.form') {
+      if ($requested_order = $this->routeMatch->getParameter('commerce_order')) {
+        return $requested_order;
+      }
+    }
+
+    return NULL;
+  }
+
+  /**
+   * Returns TRUE if given cart is requested for checkout.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $cart
+   *
+   * @return bool
+   */
+  protected function isCartRequestedForCheckout(OrderInterface $cart) {
+    if ($requested_cart = $this->getCartRequestedForCheckout()) {
+      if ($requested_cart->id() == $cart->id()) {
+        return TRUE;
+      }
+    }
+
+    return FALSE;
   }
 
 }
