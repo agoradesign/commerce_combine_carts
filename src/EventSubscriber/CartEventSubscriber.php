@@ -41,11 +41,12 @@ class CartEventSubscriber implements EventSubscriberInterface {
    *
    * @param \Drupal\commerce_order\Event\OrderAssignEvent $event
    *   The event.
+   *
+   * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function onOrderAssign(OrderAssignEvent $event) {
     $order = $event->getOrder();
 
-    // Make sure it's a cart
     if (!$order->get('cart')->isEmpty() && $order->get('cart')->value) {
       $this->cartUnifier->assignCart($order, $event->getAccount());
     }

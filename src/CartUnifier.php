@@ -50,16 +50,13 @@ class CartUnifier {
     // Clear cart cache so that newly assigned carts are available.
     $this->cartProvider->clearCaches();
     $carts = $this->cartProvider->getCarts($user);
+    $requested_cart = $this->getCartRequestedForCheckout();
 
-    if ($requested_cart = $this->getCartRequestedForCheckout()) {
-      if (isset($carts[$requested_cart->id()])) {
-        return $carts[$requested_cart->id()];
-      }
+    if ($requested_cart && isset($carts[$requested_cart->id()])) {
+      return $carts[$requested_cart->id()];
     }
 
-    return (!empty($carts))
-        ? array_shift($carts)
-        : NULL;
+    return !empty($carts) ? array_shift($carts) : NULL;
   }
 
   /**
@@ -95,6 +92,7 @@ class CartUnifier {
    */
   public function combineUserCarts(UserInterface $user) {
     $main_cart = $this->getMainCart($user);
+
     if ($main_cart) {
       foreach ($this->cartProvider->getCarts($user) as $cart) {
         $this->combineCarts($main_cart, $cart, TRUE);
@@ -116,21 +114,23 @@ class CartUnifier {
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function combineCarts(OrderInterface $main_cart, OrderInterface $other_cart, $delete = FALSE) {
-    if ($main_cart->id() !== $other_cart->id()) {
-      foreach ($other_cart->getItems() as $item) {
-        $other_cart->removeItem($item);
-        $item->get('order_id')->entity = $main_cart;
-        $combine = $this->shouldCombineItem($item);
-        $this->cartManager->addOrderItem($main_cart, $item, $combine);
-      }
+    if ($main_cart->id() === $other_cart->id()) {
+      return;
+    }
 
-      $main_cart->save();
+    foreach ($other_cart->getItems() as $item) {
+      $other_cart->removeItem($item);
+      $item->get('order_id')->entity = $main_cart;
+      $combine = $this->shouldCombineItem($item);
+      $this->cartManager->addOrderItem($main_cart, $item, $combine);
+    }
 
-      if ($delete) {
-        $other_cart->delete();
-      } else {
-        $other_cart->save();
-      }
+    $main_cart->save();
+
+    if ($delete) {
+      $other_cart->delete();
+    } else {
+      $other_cart->save();
     }
   }
 
@@ -163,8 +163,10 @@ class CartUnifier {
    * @return \Drupal\commerce_order\Entity\OrderInterface|null
    */
   protected function getCartRequestedForCheckout() {
-    if ($this->routeMatch->getRouteName() == 'commerce_checkout.form') {
-      if ($requested_order = $this->routeMatch->getParameter('commerce_order')) {
+    if ($this->routeMatch->getRouteName() === 'commerce_checkout.form') {
+      $requested_order = $this->routeMatch->getParameter('commerce_order');
+
+      if ($requested_order) {
         return $requested_order;
       }
     }
@@ -180,13 +182,8 @@ class CartUnifier {
    * @return bool
    */
   protected function isCartRequestedForCheckout(OrderInterface $cart) {
-    if ($requested_cart = $this->getCartRequestedForCheckout()) {
-      if ($requested_cart->id() == $cart->id()) {
-        return TRUE;
-      }
-    }
-
-    return FALSE;
+    $requested_cart = $this->getCartRequestedForCheckout();
+    return $requested_cart && $requested_cart->id() === $cart->id();
   }
 
 }

@@ -6,15 +6,11 @@ use Drupal\Core\Routing\RouteMatchInterface;
  * Implements hook_help().
  */
 function commerce_combine_carts_help($route_name, RouteMatchInterface $route_match) {
-  switch ($route_name) {
-    // Main module help for the commerce_combine_carts module.
-    case 'help.page.commerce_combine_carts':
-      $output = '';
-      $output .= '<h3>' . t('About') . '</h3>';
-      $output .= '<p>' . t('Combines multiple carts so that users only ever have one.') . '</p>';
-      return $output;
-
-    default:
+  if ($route_name === 'help.page.commerce_combine_carts') {
+    $output = '';
+    $output .= '<h3>' . t('About') . '</h3>';
+    $output .= '<p>' . t('Combines multiple carts so that users only ever have one.') . '</p>';
+    return $output;
   }
 }
 
