@@ -5,6 +5,8 @@ namespace Drupal\commerce_combine_carts;
 use Drupal\commerce_cart\CartManagerInterface;
 use Drupal\commerce_cart\CartProviderInterface;
 use Drupal\commerce_order\Entity\OrderInterface;
+use Drupal\commerce_order\Entity\OrderItemInterface;
+use Drupal\Core\Entity\Entity\EntityViewDisplay;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\user\UserInterface;
 
@@ -49,7 +51,6 @@ class CartUnifier {
     $this->cartProvider->clearCaches();
     $carts = $this->cartProvider->getCarts($user);
 
-    // Give priority to cart which is being checked out.
     if ($requested_cart = $this->getCartRequestedForCheckout()) {
       if (isset($carts[$requested_cart->id()])) {
         return $carts[$requested_cart->id()];
@@ -57,8 +58,8 @@ class CartUnifier {
     }
 
     return (!empty($carts))
-      ? array_shift($carts)
-      : NULL;
+        ? array_shift($carts)
+        : NULL;
   }
 
   /**
@@ -75,7 +76,6 @@ class CartUnifier {
     $main_cart = $this->getMainCart($user);
 
     if ($main_cart) {
-      // Determine which cart additional cart should be merged into.
       if ($this->isCartRequestedForCheckout($cart)) {
         $this->combineCarts($cart, $main_cart, FALSE);
       }
@@ -120,8 +120,10 @@ class CartUnifier {
       foreach ($other_cart->getItems() as $item) {
         $other_cart->removeItem($item);
         $item->get('order_id')->entity = $main_cart;
-        $this->cartManager->addOrderItem($main_cart, $item);
+        $combine = $this->shouldCombineItem($item);
+        $this->cartManager->addOrderItem($main_cart, $item, $combine);
       }
+
       $main_cart->save();
 
       if ($delete) {
@@ -130,6 +132,29 @@ class CartUnifier {
         $other_cart->save();
       }
     }
+  }
+
+  /**
+   * Determine if a line item should be combined with like items.
+   *
+   * @param OrderItemInterface $item
+   *   The order item.
+   *
+   * @return bool
+   *   TRUE if items should be combined, FALSE otherwise.
+   */
+  private function shouldCombineItem(OrderItemInterface $item) {
+    /** @var \Drupal\commerce_product\Entity\ProductVariationInterface $purchased_entity */
+    $purchased_entity = $item->getPurchasedEntity();
+    $product = $purchased_entity->getProduct();
+    $entity_display = EntityViewDisplay::load($product->getEntityTypeId() . '.' . $product->bundle() . '.default');
+    $combine = TRUE;
+
+    if ($component = $entity_display->getComponent('variations')) {
+      $combine = !empty($component['settings']['combine']);
+    }
+
+    return $combine;
   }
 
   /**
