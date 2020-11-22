@@ -6,6 +6,7 @@ use Drupal\commerce_cart\CartManagerInterface;
 use Drupal\commerce_cart\CartProviderInterface;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_order\Entity\OrderItemInterface;
+use Drupal\commerce_product\Entity\ProductVariationInterface;
 use Drupal\Core\Entity\Entity\EntityViewDisplay;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\user\UserInterface;
@@ -146,6 +147,12 @@ class CartUnifier {
   private function shouldCombineItem(OrderItemInterface $item) {
     /** @var \Drupal\commerce_product\Entity\ProductVariationInterface $purchased_entity */
     $purchased_entity = $item->getPurchasedEntity();
+
+    // Do not combine products which are no longer available in system.
+    if (!($purchased_entity instanceof ProductVariationInterface)) {
+      return FALSE;
+    }
+
     $product = $purchased_entity->getProduct();
     $entity_display = EntityViewDisplay::load($product->getEntityTypeId() . '.' . $product->bundle() . '.default');
     $combine = TRUE;
