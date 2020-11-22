@@ -48,7 +48,7 @@ class CartEventSubscriber implements EventSubscriberInterface {
     $order = $event->getOrder();
 
     if (!$order->get('cart')->isEmpty() && $order->get('cart')->value) {
-      $this->cartUnifier->assignCart($order, $event->getAccount());
+      $this->cartUnifier->assignCart($order, $event->getCustomer());
     }
   }
 
