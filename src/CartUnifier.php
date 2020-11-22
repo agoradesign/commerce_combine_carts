@@ -118,6 +118,9 @@ class CartUnifier {
     if ($main_cart->id() === $other_cart->id()) {
       return;
     }
+    if ($this->isCartRequestedForCheckout($other_cart)) {
+      return $this->combineCarts($other_cart, $main_cart, $delete);
+    }
 
     foreach ($other_cart->getItems() as $item) {
       $other_cart->removeItem($item);
