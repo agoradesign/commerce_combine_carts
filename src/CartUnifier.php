@@ -39,25 +39,28 @@ class CartUnifier {
   }
 
   /**
-   * Returns a user's main cart.
+   * Returns main carts, one per order type.
    *
    * @param \Drupal\user\UserInterface $user
    *   The user.
    *
-   * @return \Drupal\commerce_order\Entity\OrderInterface|null
-   *   The main cart for the user, or NULL if there is no cart.
+   * @return \Drupal\commerce_order\Entity\OrderInterface[]|NULL
+   *   The main carts for the user, or NULL if there is no cart.
    */
-  public function getMainCart(UserInterface $user) {
+  public function getMainCarts(UserInterface $user) {
     // Clear cart cache so that newly assigned carts are available.
     $this->cartProvider->clearCaches();
     $carts = $this->cartProvider->getCarts($user);
-    $requested_cart = $this->getCartRequestedForCheckout();
-
-    if ($requested_cart && isset($carts[$requested_cart->id()])) {
-      return $carts[$requested_cart->id()];
+    if (empty($carts)) {
+      return NULL;
     }
-
-    return !empty($carts) ? array_shift($carts) : NULL;
+    // Loop over carts. If there are several of the same type, we overwrite it
+    // with the latest one.
+    $carts_per_type = [];
+    foreach ($carts as $cart) {
+      $carts_per_type[$cart->bundle()] = $cart;
+    }
+    return $carts_per_type;
   }
 
   /**
@@ -71,14 +74,19 @@ class CartUnifier {
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function assignCart(OrderInterface $cart, UserInterface $user) {
-    $main_cart = $this->getMainCart($user);
+    $main_carts = $this->getMainCarts($user);
 
-    if ($main_cart) {
-      if ($this->isCartRequestedForCheckout($cart)) {
-        $this->combineCarts($cart, $main_cart, FALSE);
-      }
-      else {
-        $this->combineCarts($main_cart, $cart, FALSE);
+    if ($main_carts) {
+      foreach ($main_carts as $main_cart) {
+        if ($cart->bundle() != $main_cart->bundle()) {
+          continue;
+        }
+        if ($this->isCartRequestedForCheckout($cart)) {
+          $this->combineCarts($cart, $main_cart, FALSE);
+        }
+        else {
+          $this->combineCarts($main_cart, $cart, FALSE);
+        }
       }
     }
   }
@@ -92,11 +100,16 @@ class CartUnifier {
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function combineUserCarts(UserInterface $user) {
-    $main_cart = $this->getMainCart($user);
+    $main_carts = $this->getMainCarts($user);
 
-    if ($main_cart) {
-      foreach ($this->cartProvider->getCarts($user) as $cart) {
-        $this->combineCarts($main_cart, $cart, TRUE);
+    if ($main_carts) {
+      foreach ($main_carts as $main_cart) {
+        foreach ($this->cartProvider->getCarts($user) as $cart) {
+          if ($cart->bundle() != $main_cart->bundle()) {
+            continue;
+          }
+          $this->combineCarts($main_cart, $cart, TRUE);
+        }
       }
     }
   }
